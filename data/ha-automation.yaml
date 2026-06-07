@@ -1,0 +1,45 @@
+# =============================================================================
+#  AUTOMATION — Publicar sensores en la Matrix LED cada 30s
+# =============================================================================
+# Ajusta las entidades (sensor.temperatura_oficina, etc.) a las que tengas
+# en tu Home Assistant.
+#
+# Cómo instalarlo:
+#   Opción A: Pégalo en Ajustes → Automatizaciones → Crear → Editar en YAML
+#   Opción B: Añádelo a /config/automations.yaml
+# =============================================================================
+
+- alias: "Matrix LED — Publicar sensores cada 30s"
+  description: "Envía temperaturas, consumo UPS y solar a la matriz LED cada 30 segundos"
+  trigger:
+    - platform: time_pattern
+      seconds: "/30"
+  action:
+    - service: mqtt.publish
+      data:
+        topic: "matrix/led/temp_despacho"
+        payload_template: "{{ states('sensor.temperatura_oficina') | round(1) }}"
+
+    - service: mqtt.publish
+      data:
+        topic: "matrix/led/temp_exterior"
+        payload_template: "{{ states('sensor.temperatura_exterior') | round(1) }}"
+
+    - service: mqtt.publish
+      data:
+        topic: "matrix/led/temp_rack"
+        payload_template: "{{ states('sensor.temperatura_rack') | round(1) }}"
+
+    - service: mqtt.publish
+      data:
+        topic: "matrix/led/potencia_ups"
+        payload_template: "{{ states('sensor.potencia_ups') | int }}"
+
+    - service: mqtt.publish
+      data:
+        topic: "matrix/led/solar"
+        payload_template: >
+          {% set w = states('sensor.solar_production') | int(default=0) %}
+          {% set w = w if w > 0 else 0 %}
+          {{ w }}
+  mode: single

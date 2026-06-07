@@ -1,0 +1,35 @@
+# =============================================================================
+#  CONFIGURACIÓN MQTT SENSOR — Matrix LED 64x32
+# =============================================================================
+# Añade esto a tu /config/configuration.yaml
+#
+# Los nombres de sensor (temperatura_oficina, temperatura_exterior, etc.)
+# ajústalos a los que tengas en tu HA.
+# =============================================================================
+
+mqtt:
+  sensor:
+    - name: "Matrix LED Estado"
+      state_topic: "matrix/led/estado"
+      value_template: "{{ value_json.texto }}"
+      json_attributes_topic: "matrix/led/estado"
+      icon: mdi:led-strip-variant
+
+    - name: "Matrix LED Brillo"
+      state_topic: "matrix/led/estado"
+      value_template: "{{ value_json.brillo }}"
+      unit_of_measurement: ""
+      icon: mdi:brightness-6
+
+    - name: "Matrix LED Página"
+      state_topic: "matrix/led/estado"
+      value_template: >
+        {% set p = value_json.pagina | int %}
+        {% set pages = ['🕐 Reloj', '🌡 Oficina', '🖥 Rack', '☀️ Solar'] %}
+        {{ pages[p] if p < pages | length else 'Texto' }}
+      icon: mdi:monitor-dashboard
+
+    - name: "Matrix LED Auto"
+      state_topic: "matrix/led/estado"
+      value_template: "{{ 'Activo' if value_json.auto else 'Pausado' }}"
+      icon: mdi:autorenew

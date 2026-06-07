@@ -1,0 +1,302 @@
+# =============================================================================
+#  PANEL HOME ASSISTANT — MATRIX LED 64x32
+# =============================================================================
+# Cómo importarlo en HA:
+#   1. Ve a → Panel lateral → Recursos → Añadir: /config/matrix-led-dashboard.yaml
+#      (o pégalo en Ajustes > Paneles > Nuevo panel > Panel en YAML)
+#   2. Copia este archivo a /config/dashboard-matrix-led.yaml en tu HA
+#   3. Añade un nuevo panel tipo "Panel en YAML" con ruta:
+#      /local/dashboard-matrix-led.yaml  o pégalo todo en el editor YAML
+#
+# Monta las automatizaciones que publican los sensores (ver abajo) y
+# los controles funcionarán solos.
+#
+# =============================================================================
+title: "Matrix LED"
+icon: mdi:led-strip-variant
+path: matrix-led
+type: sections
+
+# =============================================================================
+#  SECCIÓN: ESTADO ACTUAL
+# =============================================================================
+sections:
+  - type: grid
+    title: "Estado de la matriz"
+    cards:
+      - type: entity
+        entity: sensor.matrix_led_estado
+        name: "Último comando"
+        icon: mdi:led-strip-variant
+        show_state: true
+
+      - type: glance
+        title: "Valores recibidos"
+        entities:
+          - entity: sensor.matrix_led_pagina
+            name: "Pantalla"
+            icon: mdi:monitor-dashboard
+          - entity: sensor.matrix_led_brillo
+            name: "Brillo"
+            icon: mdi:brightness-6
+          - entity: sensor.matrix_led_auto
+            name: "Auto-cycle"
+            icon: mdi:autorenew
+
+      - type: picture-elements
+        title: "Vista previa"
+        image: "/local/matrix-preview-placeholder.png"
+        elements:
+          - type: state-label
+            entity: sensor.matrix_led_estado
+            style:
+              top: 50%
+              left: 50%
+              font-size: 14px
+              color: white
+              background: "rgba(0,0,0,0.6)"
+              padding: 4px 8px
+              border-radius: 4px
+        show_state: false
+
+# =============================================================================
+#  SECCIÓN: SENSORES DE TEMPERATURA
+# =============================================================================
+  - type: grid
+    title: "Temperaturas"
+    cards:
+      - type: gauge
+        entity: sensor.temperatura_oficina
+        name: "Despacho"
+        unit: "°C"
+        icon: mdi:thermometer
+        min: 10
+        max: 40
+        severity:
+          green: 18
+          yellow: 26
+          red: 33
+
+      - type: gauge
+        entity: sensor.temperatura_exterior
+        name: "Exterior"
+        unit: "°C"
+        icon: mdi:weather-thermometer
+        min: -10
+        max: 45
+        severity:
+          green: 10
+          yellow: 28
+          red: 38
+
+      - type: gauge
+        entity: sensor.temperatura_rack
+        name: "Rack servidores"
+        unit: "°C"
+        icon: mdi:fridge-industrial
+        min: 20
+        max: 60
+        severity:
+          green: 25
+          yellow: 38
+          red: 50
+
+# =============================================================================
+#  SECCIÓN: ENERGÍA
+# =============================================================================
+  - type: grid
+    title: "Energía"
+    columns: 2
+    cards:
+      - type: entity
+        entity: sensor.potencia_ups
+        name: "Consumo UPS"
+        icon: mdi:power-plug
+        unit: "W"
+
+      - type: entity
+        entity: sensor.solar_production
+        name: "Producción solar"
+        icon: mdi:solar-power
+        unit: "W"
+
+      - type: sensor
+        entity: sensor.solar_production
+        name: "Solar"
+        icon: mdi:solar-power
+        graph: line
+
+# =============================================================================
+#  SECCIÓN: CONTROL DE LA MATRIZ
+# =============================================================================
+  - type: grid
+    title: "Control de la matriz"
+    cards:
+      - type: entities
+        title: "Enviar a matriz"
+        entities:
+          - type: button
+            name: "🕐 Reloj"
+            icon: mdi:clock-outline
+            tap_action:
+              action: call-service
+              service: mqtt.publish
+              service_data:
+                topic: "matrix/led/comando"
+                payload: '{"tipo":"reloj","color":"#00FF00"}'
+
+          - type: button
+            name: "🔄 Auto-cycle"
+            icon: mdi:autorenew
+            tap_action:
+              action: call-service
+              service: mqtt.publish
+              service_data:
+                topic: "matrix/led/comando"
+                payload: '{"tipo":"auto"}'
+
+          - type: button
+            name: "⬛ Apagar"
+            icon: mdi:power-off
+            tap_action:
+              action: call-service
+              service: mqtt.publish
+              service_data:
+                topic: "matrix/led/comando"
+                payload: '{"tipo":"clear"}'
+
+      - type: entities
+        title: "Páginas individuales"
+        entities:
+          - type: button
+            name: "Pág 0 • Reloj"
+            icon: mdi:clock-digital
+            tap_action:
+              action: call-service
+              service: mqtt.publish
+              service_data:
+                topic: "matrix/led/comando"
+                payload: '{"tipo":"pagina","pagina":0}'
+
+          - type: button
+            name: "Pág 1 • Oficina"
+            icon: mdi:home-thermometer
+            tap_action:
+              action: call-service
+              service: mqtt.publish
+              service_data:
+                topic: "matrix/led/comando"
+                payload: '{"tipo":"pagina","pagina":1}'
+
+          - type: button
+            name: "Pág 2 • Rack"
+            icon: mdi:fridge-industrial
+            tap_action:
+              action: call-service
+              service: mqtt.publish
+              service_data:
+                topic: "matrix/led/comando"
+                payload: '{"tipo":"pagina","pagina":2}'
+
+          - type: button
+            name: "Pág 3 • Solar"
+            icon: mdi:solar-power
+            tap_action:
+              action: call-service
+              service: mqtt.publish
+              service_data:
+                topic: "matrix/led/comando"
+                payload: '{"tipo":"pagina","pagina":3}'
+
+# =============================================================================
+#  SECCIÓN: ENVÍO DE TEXTO MANUAL
+# =============================================================================
+  - type: grid
+    title: "Texto personalizado"
+    cards:
+      - type: entities
+        entities:
+          - type: section
+            label: "Escribe y envía texto a la matriz"
+
+          - type: custom:text-input-row
+            name: "Texto"
+            icon: mdi:format-text
+            input: texto_matrix
+            action:
+              - service: mqtt.publish
+                data:
+                  topic: "matrix/led/texto"
+                  payload: "{{ states('input_text.matrix_texto') }}"
+
+      - type: entities
+        title: "Brillo"
+        entities:
+          - type: custom:slider-entity-row
+            entity: input_number.matrix_brillo
+            name: "Brillo 0-255"
+            icon: mdi:brightness-6
+            min: 0
+            max: 255
+            step: 5
+
+      - type: button
+        name: "Aplicar brillo"
+        icon: mdi:brightness-auto
+        tap_action:
+          action: call-service
+          service: mqtt.publish
+          service_data:
+            topic: "matrix/led/brillo"
+            payload: "{{ states('input_number.matrix_brillo') | int }}"
+
+# =============================================================================
+#  INPUT HELPERS NECESARIOS
+#  Añade en Ajustes → Dispositivos y servicios → Ayudantes:
+#
+#  input_text.matrix_texto
+#    Nombre: "Texto para Matrix LED"
+#    Modo: texto
+#    Máx: 80 caracteres
+#
+#  input_number.matrix_brillo
+#    Nombre: "Brillo Matrix LED"
+#    Rango: 0 - 255
+#    Paso: 5
+# =============================================================================
+
+# =============================================================================
+#  AUTOMATIZACIONES PARA PUBLICAR SENSORES
+#  Cópialo a /config/automations.yaml o créalas desde la UI
+# =============================================================================
+#
+# automation:
+#   - alias: "Matrix LED - Publicar sensores cada 30s"
+#     trigger:
+#       - platform: time_pattern
+#         seconds: "/30"
+#     action:
+#       - service: mqtt.publish
+#         data:
+#           topic: "matrix/led/temp_despacho"
+#           payload: "{{ states('sensor.temperatura_oficina') | round(1) }}"
+#       - service: mqtt.publish
+#         data:
+#           topic: "matrix/led/temp_exterior"
+#           payload: "{{ states('sensor.temperatura_exterior') | round(1) }}"
+#       - service: mqtt.publish
+#         data:
+#           topic: "matrix/led/temp_rack"
+#           payload: "{{ states('sensor.temperatura_rack') | round(1) }}"
+#       - service: mqtt.publish
+#         data:
+#           topic: "matrix/led/potencia_ups"
+#           payload: "{{ state_attr('sensor.ups', 'ups_load') | int }}"
+#       - service: mqtt.publish
+#         data:
+#           topic: "matrix/led/solar"
+#           payload: "{{ states('sensor.solar_production') | int }}"
+#       - service: mqtt.publish
+#         data:
+#           topic: "matrix/led/estado"
+#           payload: "{{ states('sensor.matrix_led_pagina') }}"

@@ -1,0 +1,24 @@
+# =============================================================================
+#  INPUT HELPERS — Matrix LED 64x32
+# =============================================================================
+# Crea estos helpers en HA:
+#   Ajustes → Dispositivos y servicios → Ayudantes → Añadir
+#
+# O créalos desde Ajustes → Sistema → Entidades → Crear helper
+# =============================================================================
+
+# ── Para el texto personalizado ──────────────────────────────────────────────
+# Tipo: input_text
+# Nombre: "Texto para Matrix LED"
+# ID: input_text.matrix_texto
+# Máximo: 80 caracteres
+# Modo: texto
+
+# ── Para el brillo ───────────────────────────────────────────────────────────
+# Tipo: input_number
+# Nombre: "Brillo Matrix LED"
+# ID: input_number.matrix_brillo
+# Mínimo: 0
+# Máximo: 255
+# Paso: 5
+# Modo: slider
