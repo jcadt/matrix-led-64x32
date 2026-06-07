@@ -17,10 +17,25 @@ const char* MQTT_PASS              = "";
 const char* MQTT_CLIENT_ID         = "matrix-led-01";
 
 // Prefijo de topics MQTT (todos los topics se cuelgan de aquí)
-//   <prefijo>/comando   — JSON de control (ver main.cpp para formatos)
-//   <prefijo>/texto     — texto plano en scroll
-//   <prefijo>/brillo    — valor 0-255
 const char* MQTT_TOPIC_PREFIX      = "matrix/led";
+
+// Temas de control:
+//   <prefijo>/comando     — JSON de control (ver README)
+//   <prefijo>/texto       — texto plano en scroll
+//   <prefijo>/brillo      — valor 0-255
+//
+// Temas de sensores (HA publica aquí):
+//   <prefijo>/temp_despacho   — temp oficina  (ej: "22.5")
+//   <prefijo>/temp_exterior   — temp exterior (ej: "18.3")
+//   <prefijo>/temp_rack       — temp rack     (ej: "35.1")
+//   <prefijo>/potencia_ups    — consumo UPS   (ej: "245")
+//   <prefijo>/solar           — producción    (ej: "4320")
+//
+// Desde HA, con una automation:
+//   service: mqtt.publish
+//   data:
+//     topic: "matrix/led/temp_despacho"
+//     payload: "{{ states('sensor.temperatura_oficina') }}"
 
 // ── NTP (para modo reloj) ───────────────────────────────────────────────────
 const char* NTP_SERVER             = "pool.ntp.org";

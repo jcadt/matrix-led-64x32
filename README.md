@@ -5,19 +5,20 @@
 ## Características
 
 - ✅ Conducción I2S DMA — sin parpadeo, color 24-bit real
-- ✅ Control remoto vía MQTT (compatible con HA)
-- ✅ Modos de visualización: texto scroll, reloj NTP, datos de sensor, iconos
+- ✅ **4 pantallas automáticas** que ciclan cada 8 segundos
+- ✅ Datos en vivo desde HA vía MQTT (temp oficina, exterior, rack, consumo UPS, solar)
+- ✅ Reloj NTP sincronizado
 - ✅ Brillo ajustable desde MQTT
-- ✅ OTA para actualizaciones inalámbricas
+- ✅ Comando JSON para texto scroll, modo manual o volver a auto-cycle
 - ✅ Doble buffer para transiciones limpias
+- ✅ Preparado para OTA
 
 ## Hardware
 
-| Componente | Modelo |
-|---|---|
-| Microcontrolador | ESP32 (cualquier placa DevKit) |
-| Matriz LED | HUB75 P3 64×32 píxeles |
-| Fuente | 5V — depende del panel (consultar consumo) |
+**Componentes:**
+- ESP32 (DevKit)
+- Matriz LED HUB75 P3 64×32 píxeles
+- Fuente 5V (según consumo del panel)
 
 ### Pines (configurables en `include/config.h`)
 
@@ -43,16 +44,15 @@
 
 ### Requisitos
 
-- [PlatformIO](https://platformio.org/) (recomendado) o Arduino IDE
+- [PlatformIO](https://platformio.org/)
 
 ### Compilar y flashear
 
 ```bash
-# Clonar el repo
-git clone <url-del-repo>
-cd matrix-led
+git clone https://github.com/jcadt/matrix-led-64x32
+cd matrix-led-64x32
 
-# Editar configuración
+# Editar configuración (WiFi, MQTT, pines)
 nano include/config.h
 
 # Compilar y subir
@@ -64,36 +64,86 @@ pio device monitor
 
 ### Primera vez
 
-1. Edita `include/config.h` con tu SSID, contraseña WiFi e IP del broker MQTT.
+1. Edita `include/config.h` con SSID, contraseña WiFi e IP del broker MQTT.
 2. Configura los pines según tu conexión física.
 3. Compila y flashea.
 
+## Pantallas automáticas (auto-cycle)
+
+La matriz cambia de pantalla cada **8 segundos** automáticamente:
+
+| # | Pantalla | Muestra | Colores |
+|---|---|---|---|
+| 0 | 🕐 **Reloj** | Hora grande + fecha | Verde / gris |
+| 1 | 🌡 **Oficina** | Temp despacho (izq) + exterior (der) | Naranja / azul |
+| 2 | 🖥 **Rack** | Temp rack (izq, color según calor) + consumo UPS (der) | Verde→naranja→rojo / cian |
+| 3 | ☀️ **Solar** | Producción solar en W o kW + barra gráfica | Amarillo |
+
 ## MQTT
 
-### Suscripciones (el ESP32 escucha)
+### Topics de sensores (HA publica, ESP32 recibe)
+
+Para que la matriz muestre datos en vivo, configura automatizaciones en HA que publiquen en estos topics:
+
+| Topic | Ejemplo payload | Descripción |
+|---|---|---|
+| `matrix/led/temp_despacho` | `22.5` | Temperatura oficina |
+| `matrix/led/temp_exterior` | `18.3` | Temperatura exterior |
+| `matrix/led/temp_rack` | `35.1` | Temperatura rack servidores |
+| `matrix/led/potencia_ups` | `245` | Consumo UPS en vatios |
+| `matrix/led/solar` | `4320` | Producción solar en vatios |
+
+**Automation de ejemplo en HA:**
+
+```yaml
+automation:
+  - alias: "Matrix LED - Publicar sensores"
+    trigger:
+      - platform: time_pattern
+        seconds: "/30"
+    action:
+      - service: mqtt.publish
+        data:
+          topic: "matrix/led/temp_despacho"
+          payload: "{{ states('sensor.temperatura_oficina') | round(1) }}"
+      - service: mqtt.publish
+        data:
+          topic: "matrix/led/temp_exterior"
+          payload: "{{ states('sensor.temperatura_exterior') | round(1) }}"
+      - service: mqtt.publish
+        data:
+          topic: "matrix/led/temp_rack"
+          payload: "{{ states('sensor.temperatura_rack') | round(1) }}"
+      - service: mqtt.publish
+        data:
+          topic: "matrix/led/potencia_ups"
+          payload: "{{ state_attr('sensor.ups', 'ups_load') | int }}"
+      - service: mqtt.publish
+        data:
+          topic: "matrix/led/solar"
+          payload: "{{ states('sensor.solar_production') | int }}"
+```
+
+### Topics de control (HA publica, ESP32 ejecuta)
 
 | Topic | Payload | Efecto |
 |---|---|---|
-| `matrix/led/comando` | `{"tipo":"texto","texto":"Hola","color":"#FF0000"}` | Muestra texto scroll |
-| `matrix/led/comando` | `{"tipo":"reloj","color":"#00FF00"}` | Reloj NTP |
-| `matrix/led/comando` | `{"tipo":"sensor","label":"Temp","valor":"23.5","color":"#FFAA00"}` | Sensor label+valor |
+| `matrix/led/comando` | `{"tipo":"texto","texto":"Hola","color":"#FF0000"}` | Texto scroll (pausa auto-cycle) |
+| `matrix/led/comando` | `{"tipo":"reloj","color":"#00FF00"}` | Solo reloj (pausa auto-cycle) |
+| `matrix/led/comando` | `{"tipo":"pagina","pagina":0}` | Fuerza página 0-3 (pausa auto-cycle) |
+| `matrix/led/comando` | `{"tipo":"auto"}` | Reanuda auto-cycle |
+| `matrix/led/comando` | `{"tipo":"clear"}` | Apaga pantalla (pausa auto-cycle) |
 | `matrix/led/comando` | `{"tipo":"brillo","valor":80}` | Brillo 0-255 |
-| `matrix/led/comando` | `{"tipo":"clear"}` | Apaga todo |
-| `matrix/led/comando` | `{"tipo":"icono","icono":"corazon","color":"#FF0000"}` | Icono predefinido |
-| `matrix/led/texto` | Texto plano | Muestra texto scroll (color por defecto) |
+| `matrix/led/texto` | `Texto plano` | Texto scroll (color por defecto) |
 | `matrix/led/brillo` | `180` | Brillo 0-255 |
 
-### Publicaciones (el ESP32 envía)
+### Publicaciones (ESP32 envía)
 
 | Topic | Payload | Descripción |
 |---|---|---|
-| `matrix/led/estado` | `{"modo":2,"texto":"Temp 23.5","brillo":128,"ip":"192.168.1.50"}` | Estado actual (LWT: `offline`) |
+| `matrix/led/estado` | `{"modo":1,"pagina":2,"auto":true,"brillo":128,"sensores":{...}}` | Estado + todos los sensores (LWT: `offline`) |
 
-## Home Assistant
-
-### Configuración vía MQTT Discovery (próximamente)
-
-De momento puedes añadirlo manualmente en `configuration.yaml`:
+## Home Assistant — MQTT Sensor
 
 ```yaml
 mqtt:
@@ -104,27 +154,12 @@ mqtt:
       json_attributes_topic: "matrix/led/estado"
 ```
 
-O usar automatizaciones para enviar comandos:
-
-```yaml
-automation:
-  - alias: "Mostrar temperatura en matriz"
-    trigger:
-      - platform: time_pattern
-        minutes: "/5"
-    action:
-      - service: mqtt.publish
-        data:
-          topic: "matrix/led/comando"
-          payload: '{"tipo":"sensor","label":"Temp","valor":"{{ states('sensor.temperatura_exterior') | round(1) }}","color":"#00FF00"}'
-```
-
 ## Modos de visualización
 
-- **Texto**: scroll horizontal si es largo (>8 caracteres), centrado si es corto
-- **Reloj**: hora actual vía NTP con fecha en gris tenue
-- **Sensor**: label en línea 1, valor grande en línea 2
-- **Icono**: dibujos predefinidos (TODO)
+- **Auto-cycle**: 4 páginas que rotan cada 8s (reloj → oficina → rack → solar)
+- **Texto**: scroll horizontal si es largo (>8 chars), centrado si es corto
+- **Reloj fijo**: solo reloj NTP
+- **Página fija**: fuerza una página concreta
 - **Vacío**: pantalla apagada
 
 ## Licencia
